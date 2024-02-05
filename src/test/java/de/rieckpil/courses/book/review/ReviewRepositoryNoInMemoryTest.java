@@ -1,5 +1,6 @@
 package de.rieckpil.courses.book.review;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -12,15 +13,24 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @DataJpaTest
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers(disabledWithoutDocker = true) // comment out if reusing
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class ReviewRepositoryNoInMemoryTest {
 
   @Container
   static PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:12.3")
     .withDatabaseName("test")
+
+// testcontainers.reuse.enable=true in ~/.testcontainers.properties
+//    .withReuse(true)
+
     .withUsername("duke")
     .withPassword("s3cret");
+
+// only if reusing
+//  static {
+//    container.start();
+//  }
 
   @DynamicPropertySource
   static void properties(DynamicPropertyRegistry registry) {
@@ -35,9 +45,12 @@ class ReviewRepositoryNoInMemoryTest {
   @Test
   @Sql(scripts = "/scripts/INIT_REVIEW_EACH_BOOK.sql")
   void shouldGetTwoReviewStatisticsWhenDatabaseContainsTwoBooksWithReview() {
+    Assertions.assertEquals(3, cut.count());
+    Assertions.assertEquals(2, cut.getReviewStatistics().size());
   }
 
   @Test
   void databaseShouldBeEmpty() {
+    Assertions.assertEquals(0, cut.count());
   }
 }
