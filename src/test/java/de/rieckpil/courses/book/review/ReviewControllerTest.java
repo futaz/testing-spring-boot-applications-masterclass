@@ -16,10 +16,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ReviewController.class)
+// When using a SecurityFilterChain bean to configure Spring Security (see deprecation of the
+// WebSecurityConfigurerAdapater), we must explicitly import the security configuration with
+// @Import(WebSecurityConfig.class), as this bean is no longer auto-configured for us when using @WebMvcTest.
 // see https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-2.7-Release-Notes#migrating-from-websecurityconfigureradapter-to-securityfilterchain
 @Import(WebSecurityConfig.class)
 class ReviewControllerTest {
@@ -59,10 +63,19 @@ class ReviewControllerTest {
 
   @Test
   void shouldNotReturnReviewStatisticsWhenUserIsUnauthenticated() throws Exception {
+    mockMvc
+      .perform(get("/api/books/reviews/statistics"))
+      .andExpect(status().isUnauthorized())
+      .andDo(print());
   }
 
   @Test
+  @WithMockUser(username = "duke") // spring-security-test is required
   void shouldReturnReviewStatisticsWhenUserIsAuthenticated() throws Exception {
+    mockMvc
+      .perform(get("/api/books/reviews/statistics"))
+      .andExpect(status().isOk())
+      .andDo(print());
   }
 
   @Test
