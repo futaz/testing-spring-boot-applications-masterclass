@@ -113,8 +113,30 @@ class ReviewControllerTest {
       .andExpect(header().string("Location", Matchers.containsString("/books/42/reviews/100")));
   }
 
+  // Ilyen esetből nagyon sokféle lehet, amit így költséges lenne @WebMvcTest-ben tesztelni.
+  // Ezekre jobb a sima unit teszt, ahol a Hibernate validatorral meghívjuk a beanvalidációt.
   @Test
   void shouldRejectNewBookReviewForAuthenticatedUsersWithInvalidPayload() throws Exception {
+    String requestBody = """
+      {
+        "reviewTitle": null,
+        "reviewContent": "I really like this book!",
+        "rating": -4
+      }
+      """;
+
+    mockMvc
+      .perform(
+        post("/api/books/{isbn}/reviews", 42)
+          .contentType(MediaType.APPLICATION_JSON)
+          .content(requestBody)
+          .with(jwt().jwt(builder -> builder
+            .claim("preferred_username", "duke")
+            .claim("email", "duke@example.com"))))
+      .andExpect(status().isBadRequest())
+      .andDo(print());
+
+    verifyNoInteractions(reviewService);
   }
 
   @Test
