@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.rieckpil.courses.config.WebSecurityConfig;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -17,9 +19,9 @@ import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ReviewController.class)
 // When using a SecurityFilterChain bean to configure Spring Security (see deprecation of the
@@ -89,6 +91,26 @@ class ReviewControllerTest {
 
   @Test
   void shouldCreateNewBookReviewForAuthenticatedUserWithValidPayload() throws Exception {
+    String requestBody = """
+      {
+        "reviewTitle": "Great Java Book!",
+        "reviewContent": "I really like this book!",
+        "rating": 4
+      }
+      """;
+
+    when(reviewService.createBookReview(eq("42"), any(BookReviewRequest.class), eq("duke"), eq("duke@example.com"))).thenReturn(100L);
+
+    mockMvc
+      .perform(
+        post("/api/books/{isbn}/reviews", 42)
+          .contentType(MediaType.APPLICATION_JSON)
+          .content(requestBody)
+          .with(jwt().jwt(builder -> builder
+            .claim("preferred_username", "duke")
+            .claim("email", "duke@example.com"))))
+      .andExpect(status().isCreated())
+      .andExpect(header().string("Location", Matchers.containsString("/books/42/reviews/100")));
   }
 
   @Test
