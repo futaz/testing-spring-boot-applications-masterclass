@@ -10,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 
 import java.util.List;
 
@@ -32,14 +33,46 @@ class BookControllerTest {
 
   @Test
   void shouldGetEmptyArrayWhenNoBooksExists() throws Exception {
+    final MvcResult mvcResult = mockMvc
+      .perform(
+        get("/api/books")
+          .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON)
+      )
+      .andExpect(status().isOk())
+      .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+      .andExpect(jsonPath("$.size()", is(0))) // ez egy hamcrest matcher!
+      .andDo(MockMvcResultHandlers.print())
+      .andReturn();
   }
 
   @Test
   void shouldNotReturnXML() throws Exception {
+    mockMvc
+      .perform(
+        get("/api/books")
+          .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_XML)
+      )
+      .andExpect(status().isNotAcceptable());
   }
 
   @Test
   void shouldGetBooksWhenServiceReturnsBooks() throws Exception {
+    when(bookManagementService.getAllBooks())
+      .thenReturn(List.of(
+        createBook(1L, "isbn1", "First title", "First Author", "First desc", "#1 genre", 120L, "Great Books press", "http://example.com")
+      ));
+
+    mockMvc
+      .perform(
+        get("/api/books")
+          .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON)
+      )
+      .andExpect(status().isOk())
+      .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+      .andExpect(jsonPath("$.size()", is(1))) // ez egy hamcrest matcher!
+      .andExpect(jsonPath("$[0].isbn", is("isbn1")))
+      .andExpect(jsonPath("$[0].id").doesNotExist())
+      .andDo(print());
   }
 
   private Book createBook(Long id, String isbn, String title, String author, String description, String genre, Long pages, String publisher, String thumbnailUrl) {
